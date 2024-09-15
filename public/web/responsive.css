@@ -1,0 +1,61 @@
+@media (min-width: 320px) and (max-width: 768px) {
+  .carousel-item img {
+    height: 100vh;
+    object-fit: cover;
+  }
+
+  .acknowledgement h2 {
+    font-size: 24px;
+  }
+
+  .block-ackwolegment {
+    padding: 30px 0;
+  }
+  .py-50 {
+    padding: 2rem 0;
+  }
+
+  h2.text-center.cus-head {
+    font-size: 2.6rem;
+  }
+
+  .block-section.block-reviews figure img {
+    height: 100vh;
+    object-fit: cover;
+  }
+
+  .footer-widget ul li {
+    text-align: center;
+  }
+
+  .title-block {
+    margin: 0!important;
+  }
+}
+
+@media only screen and (max-width: 480px) 
+{ 
+  .font-4
+  {
+      font-size: calc(1rem + 1.8vw);
+      font-weight: 300;
+      line-height: 1.2;
+  }
+  .meal-plan-row .circle {
+    border: solid 4px #17ab52;
+    background-color: #17ab52;
+    color: #fff;
+    width: 5rem;
+    height: 5rem;
+    border-radius: 50%;
+    margin: auto;
+    text-align: center;
+    font-size: 2rem;
+    line-height: 1;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left : 8px;
+  }
+}
