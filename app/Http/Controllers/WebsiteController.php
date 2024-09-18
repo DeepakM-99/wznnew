@@ -17,6 +17,10 @@ use App\Models\Allergy;
 use App\Models\Inventory;
 use DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\Admin;
+use App\Models\Coupon;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ContactFormSubmitted;
 
 class WebsiteController extends Controller
 {
@@ -73,11 +77,15 @@ class WebsiteController extends Controller
     public function contactUs(Request $request)
     {
         if ($request->isMethod('post')) {
-
 	        $save = Contact::create(['first_name' => $request->input('first_name'), 'last_name' => $request->input('last_name'), 'email_id' => $request->input('email_id'), 'mobile' => $request->input('mobile'), 'message' => $request->input('message')]);
 	        if (!$save) {
 	            return redirect()->route('contactus')->with('error', 'Unable to save!');
 	        }
+             // Send email
+             $admin = Admin::where('type', 1)->where('admin_id', 1)->where('is_delete', 0)->first();
+             if ($admin) {
+                Mail::to($admin->email_id)->send(new ContactFormSubmitted($request));
+            } 
 	        return redirect()->route('contactus')->with('success', 'Message Sent Successfully!!!');
 	    }
         return view('web.contact_us');
@@ -744,6 +752,54 @@ class WebsiteController extends Controller
         // $allergies = Allergy::all();
          $allergies = Inventory::all();
          return response()->json($allergies);
+    }
+
+    public function validateCoupon(Request $request)
+    {
+        $user = session()->get('userData');
+        $userId = $user->user_id;
+        $couponCode = $request->input('coupon_code');
+        // $userOrders = DB::table('user_order')->where(['coupon_code' => $couponCode, 'user_id' => $userId])->get();
+          // Check if the user has already used the coupon
+        $userOrders = DB::table('user_order')->where([
+            'coupon_code' => $couponCode,
+            'user_id' => $userId
+        ])->exists(); 
+        if($userOrders){
+            return response()->json([
+                'valid' => false,
+                'message' => 'You have already used this coupon.'
+            ]);
+        }
+        $coupon = Coupon::where(['coupon_title' => $couponCode, 'is_active' => 1, 'is_delete' => 0])->first();
+
+        if ($coupon) {
+            // Check if the coupon has been used more than 10 times by all users
+            $totalUsed = DB::table('user_order')->where('coupon_code', $couponCode)->count();
+            if($totalUsed >= 10) {
+                return response()->json([
+                    'valid' => false,
+                    'message' => 'This coupon has been used the maximum number of times.'
+                ]);
+            }
+        
+            if($coupon->discount_type == 'percent'){
+                $discountValue =  $coupon->percent_discount;
+            } else {
+                $discountValue =  $coupon->rupee_discount;
+            }
+            return response()->json([
+                'valid' => true,
+                'discount_type' => $coupon->discount_type,
+                'discount_value' => $discountValue,
+            ]);
+        }
+
+        // Coupon not found
+        return response()->json([
+            'valid' => false,
+            'message' => 'Coupon not found.'
+        ]);
     }
 
 }

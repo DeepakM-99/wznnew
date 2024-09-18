@@ -53,6 +53,25 @@
     ></script>
 
     <script>
+      // <-------------- Google traslator start ---------->
+      function loadGoogleTranslate() {
+        new google.translate.TranslateElement({
+          pageLanguage: 'en',
+          includedLanguages: 'en,ar', 
+          layout: google.translate.TranslateElement.InlineLayout.VERTICAL,
+          autoDisplay: false, 
+          multilanguagePage: true,
+          poweredByControl: false 
+        }, 'google_translate_element');
+      }
+      // Load Google Translate script
+      (function() {
+        var script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = 'https://translate.google.com/translate_a/element.js?cb=loadGoogleTranslate';
+        document.head.appendChild(script);
+      })();
+      // <-------------- Google traslator End ---------->
       $(document).ready(function () {
         $("#reviews-carousel").owlCarousel({
           items: 1,

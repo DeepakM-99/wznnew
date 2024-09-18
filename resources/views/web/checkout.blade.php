@@ -112,6 +112,9 @@ body {
 .form-group {
     margin-bottom: 1.5rem;
 }
+.hidden-important {
+    display: none !important;
+}
 
 @media (max-width: 768px) {
     .card-body {
@@ -268,6 +271,7 @@ body {
                                 <div class="col-md-6 form-group">
                                     <label for="couponCode" class="form-label">Coupon Code: </label>
                                     <input type="text" class="form-control" id="couponCode" name="coupon_code" placeholder="Enter coupon code">
+                                    <div id="couponError" class="text-danger" style="margin-top: -20px;display: none; font-size: 0.9rem;"></div> <!-- Error message -->
                                 </div>
                                 <div class="col-md-6 form-group">
                                     <label for="couponAttachment" class="form-label">Attach ID Proof:</label>
@@ -298,6 +302,12 @@ body {
                         <li class="list-group-item d-flex justify-content-between">
                             <span>{{$meal_name}}</span>
                             <strong>QR{{$meal_price}}</strong>
+                        </li>
+                         <!-- Placeholder for applied coupon -->
+                         <li id="appliedCouponSection" class="list-group-item d-flex justify-content-between" style="display: none !important;">
+                            <span>Applied Coupon: <span id="appliedCouponCode"></span></span>
+                            <span><span id="discountValue"></span> <span id="discountType"></span></span>
+                            <button type="button"  id="removeCouponBtn" class="btn btn-sm btn-danger">Remove</button>
                         </li>
                     </ul>
                     <h4 class="text-end">QR{{$meal_price}}</h4>
@@ -373,7 +383,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const couponSection = document.getElementById('couponSection');
 
     hasCouponSelect.addEventListener('change', function() {
-        couponSection.style.display = this.value === 'yes' ? 'block' : 'none';
+        if(this.value === 'yes'){
+            couponSection.style.display =  'block'
+        } else {
+            couponSection.style.display =  'none'
+            resetOrderSummary();
+        }
     });
 
     // Address fields toggle
@@ -386,6 +401,95 @@ document.addEventListener('DOMContentLoaded', function() {
 
     deliverySelect.addEventListener('change', toggleAddressFields);
     toggleAddressFields(); // Initialize on page load
+
+    // manage coupon code
+    const couponCodeInput = document.getElementById('couponCode');
+    const couponErrorDiv = document.getElementById('couponError');
+    const couponForm = document.getElementById('couponSection');
+    const appliedCouponSection = document.getElementById('appliedCouponSection');
+    const appliedCouponCodeSpan = document.getElementById('appliedCouponCode');
+    const discountValueSpan = document.getElementById('discountValue');
+    const discountTypeSpan = document.getElementById('discountType');
+    const removeCouponBtn = document.getElementById('removeCouponBtn');
+
+    function updateOrderSummary(discount) {
+        const originalPrice = parseFloat("{{$meal_price}}");
+
+        let finalPrice;
+
+        if (discount.type === 'percent') {
+            finalPrice = originalPrice * (1 - discount.value / 100);
+        } else {
+            finalPrice = originalPrice - discount.value;
+        }
+
+        document.querySelector('.final-price').textContent = finalPrice.toFixed(2);
+        document.querySelector('.text-end').textContent = 'QR' + finalPrice.toFixed(2);
+        document.querySelector('input[name="order_amount"]').value = finalPrice.toFixed(2);
+    }
+    
+    couponCodeInput.addEventListener('keyup', function() {
+        const couponCode = this.value;
+        if (!couponCode) {
+            couponErrorDiv.style.display = 'none';
+            couponErrorDiv.textContent = '';
+            return;
+        }
+        if (couponCode) {
+            fetch("{{ route('validate.coupon') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ coupon_code: couponCode })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.valid) {
+                    updateOrderSummary({
+                        type: data.discount_type,
+                        value: data.discount_value,
+                    });
+                    // Hide error and reset it
+                    couponErrorDiv.style.display = 'none';
+                    couponErrorDiv.textContent = '';
+
+                    // Show coupon details in order summary
+                    appliedCouponCodeSpan.textContent = couponCode;
+                    discountValueSpan.textContent = data.discount_value;
+                    discountTypeSpan.textContent = data.discount_type === 'percent' ? '%' : 'QR';
+                    appliedCouponSection.classList.remove('hidden-important');
+                    appliedCouponSection.style.display = 'flex';
+                    couponCodeInput.readOnly = true;
+                } else {
+                    // Show error message
+                    couponErrorDiv.style.display = 'block';
+                    couponErrorDiv.textContent = 'Invalid coupon code.';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+    });
+
+    // Remove coupon logic
+    removeCouponBtn.addEventListener('click', function() {
+        couponCodeInput.value = '';
+        couponCodeInput.readOnly = false;
+        resetOrderSummary();
+    });
+
+    function resetOrderSummary() {
+        couponCodeInput.value = '';
+        couponCodeInput.readOnly = false;
+        appliedCouponSection.classList.add('hidden-important');
+        const originalPrice = parseFloat("{{$meal_price}}");
+        document.querySelector('.final-price').textContent = 'QR' + originalPrice.toFixed(2);
+        document.querySelector('.text-end').textContent = 'QR' + originalPrice.toFixed(2);
+        document.querySelector('input[name="order_amount"]').value = originalPrice.toFixed(2);
+    }
 });
 
 </script>

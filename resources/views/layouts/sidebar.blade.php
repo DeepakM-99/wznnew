@@ -195,6 +195,12 @@
     </li>
   </ul>
 </li>
+<li class="nav-item">
+  <a href="{{ url('admin/contact-us-user-listing') }}" class="nav-link" style="background-color: rgba(255, 255, 255, 0.25); border-radius:3px;">
+    <i class="fas fa-calendar-alt nav-icon"></i>
+    <p>Contact Us</p>
+  </a>
+</li>
         </ul>
       </nav>
       <!-- /.sidebar-menu -->
