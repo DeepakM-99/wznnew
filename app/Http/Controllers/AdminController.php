@@ -31,6 +31,7 @@ use Yajra\DataTables\Facades\DataTables;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Log;
+use App\Models\Contact;
 
 use Illuminate\Routing\Controller as BaseController;
 
@@ -1201,4 +1202,23 @@ class AdminController extends BaseController
     	session()->forget(['adminData']);
         return redirect('admin/login');
     }
+
+	public function contactUsUserListing(Request $request)
+    {
+		$data = DB::table('contact_us')
+        	->select('*')->get();
+    	return view('admin.contact_us', compact('data'));
+    }
+
+	public function deleteContactUsUser(Request $request,$id)
+	{
+		$contactId = decrypt($id);
+		$delete = Contact::where('contact_id', $contactId)->delete();
+		if(!$delete)
+		{
+			return redirect()->route('admin.contactUsUserListing')->with('message', 'User Not Found!');
+		}else {
+	        return redirect()->route('admin.contactUsUserListing')->with('message', 'User Deleted Successfully!');
+	    }
+	}
 }

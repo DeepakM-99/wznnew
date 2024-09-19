@@ -17,8 +17,10 @@ use App\Models\Allergy;
 use App\Models\Inventory;
 use DB;
 use Illuminate\Support\Facades\Log;
-use \PDF;
+use App\Models\Admin;
+use App\Models\Coupon;
 use Illuminate\Support\Facades\Mail;
+use App\Mail\ContactFormSubmitted;
 
 class WebsiteController extends Controller
 {
@@ -38,32 +40,32 @@ class WebsiteController extends Controller
             if ($existingUser) {
                 return redirect()->route('register')->with('error', 'Email already exists! Please use a different email.');
             }
-	        $save = Users::create(['full_name' => $request->input('full_name'), 'email_id' => $request->input('email_id'), 'password' => $request->input('password'), 'mobile' => $request->input('mobile'), 'country_code' => $request->input('country_code'), 'is_active' => 1]);
-	        if (!$save) {
-	            return redirect()->route('register')->with('error', 'Unable to save!');
-	        }
-	        return redirect()->route('login')->with('success', 'Registration Done Successfully! Please Login.');
-	    }
+            $save = Users::create(['full_name' => $request->input('full_name'), 'email_id' => $request->input('email_id'), 'password' => $request->input('password'), 'mobile' => $request->input('mobile'), 'country_code' => $request->input('country_code'), 'is_active' => 1]);
+            if (!$save) {
+                return redirect()->route('register')->with('error', 'Unable to save!');
+            }
+            return redirect()->route('login')->with('success', 'Registration Done Successfully! Please Login.');
+        }
         return view('web.register_form');
     }
     public function login(Request $request)
     {
         if(isset($_POST['submit']))
-    	{
-    		 $validatedData = $request->validate([
-			    'email_id' => 'required|email',
-			    'password' => 'required|string',
-			]);
+        {
+             $validatedData = $request->validate([
+                'email_id' => 'required|email',
+                'password' => 'required|string',
+            ]);
 
-    		$userData=Users::where(['email_id'=>$request->email_id,'password'=>$request->password,'is_delete'=>0])->first();
+            $userData=Users::where(['email_id'=>$request->email_id,'password'=>$request->password,'is_delete'=>0])->first();
 
-	        if ($userData) {
+            if ($userData) {
                 session(['userData' => $userData]);
                 return redirect('/')->with('success', 'Login Successfully.');
             } else {
                 return redirect('login')->with('error', 'Invalid Credentials');
             }
-    	}
+        }
         return view('web.login_form');
     }
     public function logout(Request $request)
@@ -75,13 +77,17 @@ class WebsiteController extends Controller
     public function contactUs(Request $request)
     {
         if ($request->isMethod('post')) {
-
-	        $save = Contact::create(['first_name' => $request->input('first_name'), 'last_name' => $request->input('last_name'), 'email_id' => $request->input('email_id'), 'mobile' => $request->input('mobile'), 'message' => $request->input('message')]);
-	        if (!$save) {
-	            return redirect()->route('contactus')->with('error', 'Unable to save!');
-	        }
-	        return redirect()->route('contactus')->with('success', 'Message Sent Successfully!!!');
-	    }
+            $save = Contact::create(['first_name' => $request->input('first_name'), 'last_name' => $request->input('last_name'), 'email_id' => $request->input('email_id'), 'mobile' => $request->input('mobile'), 'message' => $request->input('message')]);
+            if (!$save) {
+                return redirect()->route('contactus')->with('error', 'Unable to save!');
+            }
+             // Send email
+             $admin = Admin::where('type', 1)->where('admin_id', 1)->where('is_delete', 0)->first();
+             if ($admin) {
+                Mail::to($admin->email_id)->send(new ContactFormSubmitted($request));
+            } 
+            return redirect()->route('contactus')->with('success', 'Message Sent Successfully!!!');
+        }
         return view('web.contact_us');
     }
     public function ourMenu()
@@ -582,21 +588,19 @@ class WebsiteController extends Controller
     public function placeOrderPage(Request $request)
     {
         $user = session()->get('userData');
-        // dd($user);
         if (!$user) {
             return redirect()->route('login')->with('error', 'Please log in to place an order.');
         } else {
             $user_id = $user->user_id;
-            $user_email = $user->email_id;
-            // dd($user_email);
         }
+
 
         $meal_id = $request->meal_id;
         $full_name = $request->full_name;
         $personal_no = $request->personal_no;
+        $delivery_no = $request->delivery_no;
         $personal_no_country_code = $request->personal_no_country_code;
         $delivery_no_country_code = $request->delivery_no_country_code;
-        $delivery_no = $request->delivery_no;
         $dob = $request->dob;
         $order_amount = $request->order_amount;
         $height = $request->height;
@@ -612,8 +616,10 @@ class WebsiteController extends Controller
         $delivery_instructions = $request->delivery_instructions;
         $delivery_id = $request->delivery_id;
         $start_date = $request->start_date;
+        $end_date = $request->end_date;
         $allergy_id = $request->allergy_id;
         $coupon_code = $request->coupon_code;
+
 
         // Handle file upload
         $FileUrl = null;
@@ -625,21 +631,30 @@ class WebsiteController extends Controller
             $FileUrl = url('/uploads/id_proof/' . $fileName);
         }
 
+
         if (is_array($allergy_id)) {
             $allergy_id = implode(',', $allergy_id);
         }
+
+
+        // $generatedPlans = DB::table('generated_plans')
+        //     ->where('meal_id', $meal_id)
+        //     ->where('is_primary', 1)
+        //     ->get();
+
 
         // Save the data in the orders table
         $order = DB::table('user_order')->insertGetId([
             'meal_id' => $meal_id,
             'user_id' => $user_id,
             'start_date' => $start_date,
+            'end_date' => $end_date,
             'allergy_id' => $allergy_id,
             'full_name' => $full_name,
             'personal_no' => $personal_no,
+            'delivery_no' => $delivery_no,
             'personal_no_country_code' => $personal_no_country_code,
             'delivery_no_country_code' => $delivery_no_country_code,
-            'delivery_no' => $delivery_no,
             'dob' => $dob,
             'order_amount' => $order_amount,
             'height' => $height,
@@ -659,6 +674,18 @@ class WebsiteController extends Controller
             'id_proof' => $FileUrl,
         ]);
 
+
+        // Save the user menu in the user_menus table along with the order_id
+        // foreach ($generatedPlans as $plan) {
+        //     DB::table('user_menus')->insert([
+        //         'order_id' => $order,
+        //         'menu_id' => $plan->menu_id,
+        //         'created_at' => now(),
+        //         'updated_at' => now(),
+        //     ]);
+        // }
+
+
         // Get the user plan data from session and save it in the user_plan table
         $userPlanData = session()->get('userPlanData');
         if ($userPlanData) {
@@ -667,32 +694,10 @@ class WebsiteController extends Controller
             }
             session()->forget('userPlanData');  // Clear the session after saving
         }
-        
-        // After saving the order
+
+
         if ($order) {
-            // Fetch the order data
-            $orderData = DB::table('user_order')->where('order_id', $order)->first();
-            $orderMenu = DB::table('user_plan')
-                        ->join('food_menu', 'user_plan.menu_id', '=', 'food_menu.menu_id')
-                        ->where('user_plan.order_id', $order)
-                        ->select('user_plan.*', 'food_menu.menu', 'food_menu.media_file')
-                        ->get();
-                        // dd($orderMenu);
-
-            // Generate the PDF using the order data
-            $pdf = Pdf::loadView('web.order_pdf', ['order' => $orderData, 'menu' => $orderMenu, 'email_id' => $user_email]);
-            // $user_email = "malviyadeepak7999@gmail.com";
-            $user_email = $user_email;
-            // Send the email with the order PDF
-            Mail::send([], [], function ($message) use ($pdf, $orderData, $user_email) {
-                $message->to($user_email, $orderData->full_name)
-                        ->subject('Order Confirmation - ' . $orderData->order_id)
-                        ->attachData($pdf->output(), "order_{$orderData->order_id}.pdf");
-            });
-
-            print_r('Successfully Send');die();
-
-            return redirect('/')->with('success', 'Order has been successfully placed, and the confirmation has been sent via email.');
+            return redirect('/')->with('success', 'Order has been successfully placed.');
         } else {
             return redirect('/')->with('error', 'There was an issue placing the order.');
         }
@@ -747,6 +752,54 @@ class WebsiteController extends Controller
         // $allergies = Allergy::all();
          $allergies = Inventory::all();
          return response()->json($allergies);
+    }
+
+    public function validateCoupon(Request $request)
+    {
+        $user = session()->get('userData');
+        $userId = $user->user_id;
+        $couponCode = $request->input('coupon_code');
+        // $userOrders = DB::table('user_order')->where(['coupon_code' => $couponCode, 'user_id' => $userId])->get();
+          // Check if the user has already used the coupon
+        $userOrders = DB::table('user_order')->where([
+            'coupon_code' => $couponCode,
+            'user_id' => $userId
+        ])->exists(); 
+        if($userOrders){
+            return response()->json([
+                'valid' => false,
+                'message' => 'You have already used this coupon.'
+            ]);
+        }
+        $coupon = Coupon::where(['coupon_title' => $couponCode, 'is_active' => 1, 'is_delete' => 0])->first();
+
+        if ($coupon) {
+            // Check if the coupon has been used more than 10 times by all users
+            $totalUsed = DB::table('user_order')->where('coupon_code', $couponCode)->count();
+            if($totalUsed >= 10) {
+                return response()->json([
+                    'valid' => false,
+                    'message' => 'This coupon has been used the maximum number of times.'
+                ]);
+            }
+        
+            if($coupon->discount_type == 'percent'){
+                $discountValue =  $coupon->percent_discount;
+            } else {
+                $discountValue =  $coupon->rupee_discount;
+            }
+            return response()->json([
+                'valid' => true,
+                'discount_type' => $coupon->discount_type,
+                'discount_value' => $discountValue,
+            ]);
+        }
+
+        // Coupon not found
+        return response()->json([
+            'valid' => false,
+            'message' => 'Coupon not found.'
+        ]);
     }
 
 }

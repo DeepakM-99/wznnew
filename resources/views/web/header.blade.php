@@ -108,6 +108,9 @@
             class="text-decoration-none text-dark nav-link fw-semibold"
           >BLOG</a>
         </li>
+        <li class="nav-item">
+          <div id="google_translate_element"></div>
+        </li>
         <li class="nav-item dropdown">
           <a
             class="nav-link dropdown-toggle"

@@ -116,6 +116,9 @@ Route::group(['middleware' => 'admin.login'], function ()
 	Route::post('/admin/update-meal', [AdminController::class, 'updateMeal'])->name('admin.updateMeal');
 	Route::any('/admin/meals', [AdminController::class, 'getMeals'])->name('admin.getMeals');
 
+	//Contact Us Detail
+	Route::any('/admin/contact-us-user-listing',[AdminController::class,'contactUsUserListing'])->name('admin.contactUsUserListing');
+	Route::any('/admin/delete-contact-us-user/{id}', [AdminController::class, 'deleteContactUsUser'])->name('admin.deleteContactUsUser');
 });
 
 
@@ -152,3 +155,5 @@ Route::any('/order-detail/{id}',[WebsiteController::class,'userOrderDetail'])->n
 
 Route::any('/replace-meal',[WebsiteController::class,'replaceMeal'])->name('replace-meal');
 Route::any('/get-meal-data/{mealId}',[WebsiteController::class,'getMealData'])->name('get-meal-data');
+
+Route::post('/validate-coupon', [WebsiteController::class, 'validateCoupon'])->name('validate.coupon');

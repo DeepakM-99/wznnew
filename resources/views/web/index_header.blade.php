@@ -108,6 +108,9 @@
         <li class="nav-item">
           <a href="{{url('blogs')}}" class="text-decoration-none text-dark nav-link fw-semibold">BLOG</a>
         </li>
+        <li class="nav-item">
+          <div id="google_translate_element"></div>
+        </li>
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="fa fa-user" aria-hidden="true"></i>

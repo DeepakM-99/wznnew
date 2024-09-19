@@ -819,6 +819,41 @@ a.btn.btn-build-plan:hover {
   margin-bottom: 20px;
 }
 
+/* Start ---- Optional: Customize the appearance of the Google Translate widget */
+.goog-te-banner-frame {
+  display: none !important;
+}
+.goog-te-menu-frame {
+  display: none !important;
+}
+.goog-te-menu {
+  display: none !important;
+}
+.goog-te-gadget {
+  border: none !important;
+  background: transparent !important;
+}
+.skiptranslate.goog-te-gadget span {
+  display: none !important;
+}
+.goog-te-gadget{
+  visibility: hidden;
+}
+.skiptranslate.goog-te-gadget div {
+  visibility: visible;
+}
+.goog-te-gadget-simple img {
+    display:inline-block;
+}
+.translated-ltr .translator_enabled br {
+    display: none;
+}
+.VIpgJd-ZVi9od-ORHb-OEVmcd {
+  z-index:0 !important;
+  position:relative !important;
+}
+/* End -------- Optional: Customize the appearance of the Google Translate widget */
+
 /* -----------Responsive Css---------------- */
 @media (min-width: 320px) and (max-width: 768px) {
   .carousel-item img {
