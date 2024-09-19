@@ -17,6 +17,8 @@ use App\Models\Allergy;
 use App\Models\Inventory;
 use DB;
 use Illuminate\Support\Facades\Log;
+use \PDF;
+use Illuminate\Support\Facades\Mail;
 
 class WebsiteController extends Controller
 {
@@ -580,19 +582,21 @@ class WebsiteController extends Controller
     public function placeOrderPage(Request $request)
     {
         $user = session()->get('userData');
+        // dd($user);
         if (!$user) {
             return redirect()->route('login')->with('error', 'Please log in to place an order.');
         } else {
             $user_id = $user->user_id;
+            $user_email = $user->email_id;
+            // dd($user_email);
         }
-
 
         $meal_id = $request->meal_id;
         $full_name = $request->full_name;
         $personal_no = $request->personal_no;
-        $delivery_no = $request->delivery_no;
         $personal_no_country_code = $request->personal_no_country_code;
         $delivery_no_country_code = $request->delivery_no_country_code;
+        $delivery_no = $request->delivery_no;
         $dob = $request->dob;
         $order_amount = $request->order_amount;
         $height = $request->height;
@@ -608,10 +612,8 @@ class WebsiteController extends Controller
         $delivery_instructions = $request->delivery_instructions;
         $delivery_id = $request->delivery_id;
         $start_date = $request->start_date;
-        $end_date = $request->end_date;
         $allergy_id = $request->allergy_id;
         $coupon_code = $request->coupon_code;
-
 
         // Handle file upload
         $FileUrl = null;
@@ -623,30 +625,21 @@ class WebsiteController extends Controller
             $FileUrl = url('/uploads/id_proof/' . $fileName);
         }
 
-
         if (is_array($allergy_id)) {
             $allergy_id = implode(',', $allergy_id);
         }
-
-
-        // $generatedPlans = DB::table('generated_plans')
-        //     ->where('meal_id', $meal_id)
-        //     ->where('is_primary', 1)
-        //     ->get();
-
 
         // Save the data in the orders table
         $order = DB::table('user_order')->insertGetId([
             'meal_id' => $meal_id,
             'user_id' => $user_id,
             'start_date' => $start_date,
-            'end_date' => $end_date,
             'allergy_id' => $allergy_id,
             'full_name' => $full_name,
             'personal_no' => $personal_no,
-            'delivery_no' => $delivery_no,
             'personal_no_country_code' => $personal_no_country_code,
             'delivery_no_country_code' => $delivery_no_country_code,
+            'delivery_no' => $delivery_no,
             'dob' => $dob,
             'order_amount' => $order_amount,
             'height' => $height,
@@ -666,18 +659,6 @@ class WebsiteController extends Controller
             'id_proof' => $FileUrl,
         ]);
 
-
-        // Save the user menu in the user_menus table along with the order_id
-        // foreach ($generatedPlans as $plan) {
-        //     DB::table('user_menus')->insert([
-        //         'order_id' => $order,
-        //         'menu_id' => $plan->menu_id,
-        //         'created_at' => now(),
-        //         'updated_at' => now(),
-        //     ]);
-        // }
-
-
         // Get the user plan data from session and save it in the user_plan table
         $userPlanData = session()->get('userPlanData');
         if ($userPlanData) {
@@ -686,10 +667,32 @@ class WebsiteController extends Controller
             }
             session()->forget('userPlanData');  // Clear the session after saving
         }
-
-
+        
+        // After saving the order
         if ($order) {
-            return redirect('/')->with('success', 'Order has been successfully placed.');
+            // Fetch the order data
+            $orderData = DB::table('user_order')->where('order_id', $order)->first();
+            $orderMenu = DB::table('user_plan')
+                        ->join('food_menu', 'user_plan.menu_id', '=', 'food_menu.menu_id')
+                        ->where('user_plan.order_id', $order)
+                        ->select('user_plan.*', 'food_menu.menu', 'food_menu.media_file')
+                        ->get();
+                        // dd($orderMenu);
+
+            // Generate the PDF using the order data
+            $pdf = Pdf::loadView('web.order_pdf', ['order' => $orderData, 'menu' => $orderMenu, 'email_id' => $user_email]);
+            // $user_email = "malviyadeepak7999@gmail.com";
+            $user_email = $user_email;
+            // Send the email with the order PDF
+            Mail::send([], [], function ($message) use ($pdf, $orderData, $user_email) {
+                $message->to($user_email, $orderData->full_name)
+                        ->subject('Order Confirmation - ' . $orderData->order_id)
+                        ->attachData($pdf->output(), "order_{$orderData->order_id}.pdf");
+            });
+
+            print_r('Successfully Send');die();
+
+            return redirect('/')->with('success', 'Order has been successfully placed, and the confirmation has been sent via email.');
         } else {
             return redirect('/')->with('error', 'There was an issue placing the order.');
         }
